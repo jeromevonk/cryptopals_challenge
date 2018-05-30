@@ -362,6 +362,35 @@ unsigned int getPKCS7paddedSize(unsigned int uiLen, unsigned int uiPadTo)
       return uiPaddedSize;
    }
 }
+
+bool validPKCS7padding( unsigned char* auchPlaintext, unsigned int uiLen, unsigned int* puiNewLen)
+{
+   bool bValid = true;
+   *puiNewLen = uiLen;
+   unsigned int uiPaddingSize = auchPlaintext[uiLen - 1]; // this is the last byte of the plaintext [0 to uiLen-1]
+
+   // Padding must be smaller than the actual size
+   if (uiPaddingSize >= uiLen || uiPaddingSize == 0)
+   {
+      bValid = false;
+   }
+   else
+   {
+      *puiNewLen -= uiPaddingSize;
+
+      // Determine if it has valid PKCS#7 padding
+      for (unsigned int i = uiLen - 1; i >= *puiNewLen; i--)
+      {
+         if (auchPlaintext[i] != uiPaddingSize)
+         {
+            bValid = false;
+            break;
+         }
+      }
+   }
+   
+   return bValid;
+}
 unsigned int applyPKCS7padding(unsigned char* auchPlaintext, unsigned int uiLen, unsigned int uiPadTo)
 {
    char chToPad;
@@ -397,29 +426,10 @@ unsigned int applyPKCS7padding(unsigned char* auchPlaintext, unsigned int uiLen,
 }
 unsigned int removePCKS7padding(unsigned char* auchPlaintext, unsigned int uiLen, bool bUseExceptions = false)
 {
-   bool bValid = true;
-   unsigned int uiNewSize = uiLen;
-   unsigned int uiPaddingSize = auchPlaintext[uiLen - 1]; // this is the last byte of the plaintext [0 to uiLen-1]
+   bool bValid = false;
+   unsigned int uiNewSize = 0;
 
-   // Padding must be smaller than the actual size
-   if (uiPaddingSize >= uiLen || uiPaddingSize == 0)
-   {
-      bValid = false;
-   }
-   else
-   {
-      uiNewSize -= uiPaddingSize;
-
-      // Determine if it has valid PKCS#7 padding
-      for (unsigned int i = uiLen - 1; i >= uiNewSize; i--)
-      {
-         if (auchPlaintext[i] != uiPaddingSize)
-         {
-            bValid = false;
-            break;
-         }
-      }
-   }
+   bValid = validPKCS7padding(auchPlaintext, uiLen, &uiNewSize);
 
    if (false == bValid)
    {

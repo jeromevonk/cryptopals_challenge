@@ -116,7 +116,7 @@ int main()
    Block ciphertext;
 
    // --------------------------------------------------------------------------------
-   // It should no be possible to produce a admin profile just by providing the input
+   // It should not be possible to produce a admin profile just by providing the input
    // --------------------------------------------------------------------------------
 
    // Create an entry
