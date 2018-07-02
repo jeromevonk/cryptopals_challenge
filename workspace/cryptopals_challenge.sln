@@ -43,6 +43,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Set 3", "Set 3", "{A50A6337
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "17.cbc_padding_oracle", "..\17\17.cbc_padding_oracle\17.cbc_padding_oracle.vcxproj", "{E0C124BD-12E5-4D2E-A812-6C9AC2F7FE41}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "18.ctr_mode", "..\18\18.ctr_mode\18.ctr_mode.vcxproj", "{B5426E1F-2209-49E7-9E81-7A879961DA20}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -187,6 +189,14 @@ Global
 		{E0C124BD-12E5-4D2E-A812-6C9AC2F7FE41}.Release|x64.Build.0 = Release|x64
 		{E0C124BD-12E5-4D2E-A812-6C9AC2F7FE41}.Release|x86.ActiveCfg = Release|Win32
 		{E0C124BD-12E5-4D2E-A812-6C9AC2F7FE41}.Release|x86.Build.0 = Release|Win32
+		{B5426E1F-2209-49E7-9E81-7A879961DA20}.Debug|x64.ActiveCfg = Debug|x64
+		{B5426E1F-2209-49E7-9E81-7A879961DA20}.Debug|x64.Build.0 = Debug|x64
+		{B5426E1F-2209-49E7-9E81-7A879961DA20}.Debug|x86.ActiveCfg = Debug|Win32
+		{B5426E1F-2209-49E7-9E81-7A879961DA20}.Debug|x86.Build.0 = Debug|Win32
+		{B5426E1F-2209-49E7-9E81-7A879961DA20}.Release|x64.ActiveCfg = Release|x64
+		{B5426E1F-2209-49E7-9E81-7A879961DA20}.Release|x64.Build.0 = Release|x64
+		{B5426E1F-2209-49E7-9E81-7A879961DA20}.Release|x86.ActiveCfg = Release|Win32
+		{B5426E1F-2209-49E7-9E81-7A879961DA20}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -209,5 +219,6 @@ Global
 		{30A9CB2D-5F7B-407A-9DB5-9A2170E25A99} = {999FC65D-E6AD-4DAB-A831-726F84D59721}
 		{F8A50396-ED4A-4978-9049-D1A39129D2FD} = {999FC65D-E6AD-4DAB-A831-726F84D59721}
 		{E0C124BD-12E5-4D2E-A812-6C9AC2F7FE41} = {A50A6337-81B9-451E-88EE-4BE9371FECD6}
+		{B5426E1F-2209-49E7-9E81-7A879961DA20} = {A50A6337-81B9-451E-88EE-4BE9371FECD6}
 	EndGlobalSection
 EndGlobal

@@ -21,10 +21,11 @@ char b64table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 const char* english_score_table = "*0987654321/\"'?!_-zqxjkvbwpygumcfl\n,. dhsirnoate";
 
-enum 
+enum OperationMode
 {
    ECB_MODE = 0,
-   CBC_MODE
+   CBC_MODE,
+   CTR_MODE
 };
 
 
@@ -43,8 +44,16 @@ struct Block
          free();
       }
 
-      data = new unsigned char[iSize];
-      len = iSize;
+      try
+      {
+         data = new unsigned char[iSize];
+         len = iSize;
+      }
+      catch(std::bad_alloc& e)
+      {
+         len = 0;
+         printf("#### Allocation failed: %s ###\n", e.what() );
+      }
    }
    
    void free()
@@ -60,6 +69,16 @@ struct Block
    void set_to_zeroes()
    {
       memset(data, 0, len);
+   }
+
+   void set_to( int iValue)
+   {
+      memset( data, iValue, len );
+   }
+
+   void set_data( const char* achData, unsigned int uiDataLen )
+   {
+      memcpy( data, achData, uiDataLen );
    }
    
    Block()
@@ -78,30 +97,35 @@ struct Block
       free();
    }
 
-   Block& operator=(const Block& a)
+   // Copy constructor
+   Block(const Block& other)
+   {
+      alloc(other.len);
+      memcpy(data, other.data, other.len);
+   }
+
+   // Copy assignment operator
+   // see (https://en.wikipedia.org/wiki/Rule_of_three_(C%2B%2B_programming))
+   Block& operator=(const Block& other)
    {
       // copy the data
-      free();
-      alloc(a.len);
-      memcpy(data, a.data, a.len);
+      alloc(other.len);
+      memcpy(data, other.data, other.len);
 
       return *this;
    }
 
 };
-
-bool randomBlock(Block* random, unsigned int uiLen)
+Block randomBlock(unsigned int uiLen)
 {
-   random->alloc(uiLen);
-   if (!RAND_bytes(random->data, random->len))
+   Block out(uiLen);
+   if (!RAND_bytes(out.data, out.len))
    {
-      memset(random->data, 0x5A, random->len); // not much to do.. fill with 0x5A
-      return false;
+      memset(out.data, 0x5A, out.len); // not much to do.. fill with 0x5A
    }
 
-   return true;
+   return out;
 }
-
 
 // -----------------------------------------------------------------------------
 // Base 64 encode/decode
@@ -119,17 +143,21 @@ int findIndex(char ch)
 
    return i;
 }
-int base64encode(unsigned char* achHexBuffer, int iHexSize, unsigned char* achEncodedBuffer)
+Block base64encode(unsigned char* achHexBuffer, int iHexSize)
 {
+   // Create a Block object to be returned.
+   // Alloc the maximum size of the encoded data ( iHexSize * 4 /3 )
+   Block out(iHexSize*4/3);
+
    int iEncodedSize = 0;
-   int j = 0;
 
    char achThree[3] = {0};
    char achFour[4]  = {0};
 
-   if ( NULL == achHexBuffer || NULL == achEncodedBuffer || iHexSize <= 0 )
+   if ( NULL == achHexBuffer || iHexSize <= 0 )
    {
-      return 0;
+      // return empty Block
+      return Block();
    }
 
    while ( iHexSize > 3)
@@ -138,7 +166,6 @@ int base64encode(unsigned char* achHexBuffer, int iHexSize, unsigned char* achEn
       achThree[1] = *(achHexBuffer++);
       achThree[2] = *(achHexBuffer++);
 
-
       achFour[0] =  (achThree[0] & 0xfc) >> 2;
       achFour[1] = ((achThree[0] & 0x03) << 4) + ((achThree[1] & 0xf0) >> 4);
       achFour[2] = ((achThree[1] & 0x0f) << 2) + ((achThree[2] & 0xc0) >> 6);
@@ -146,7 +173,7 @@ int base64encode(unsigned char* achHexBuffer, int iHexSize, unsigned char* achEn
 
       for (int z = 0; z < 4; z++)
       {
-         achEncodedBuffer[iEncodedSize++] = b64table[(unsigned int)achFour[z]];
+         out.data[iEncodedSize++] = b64table[(unsigned int)achFour[z]];
       }
 
       iHexSize -= 3;
@@ -154,12 +181,12 @@ int base64encode(unsigned char* achHexBuffer, int iHexSize, unsigned char* achEn
 
    if ( iHexSize > 0 )
    {
-      for(j = 0; j < iHexSize; j++)
+      for(int j = 0; j < iHexSize; j++)
       {
          achThree[j] = *(achHexBuffer++);
       }
 
-      for(j = iHexSize; j < 3; j++)
+      for(int j = iHexSize; j < 3; j++)
       {
          achThree[j] = 0x00;
       }
@@ -169,39 +196,41 @@ int base64encode(unsigned char* achHexBuffer, int iHexSize, unsigned char* achEn
       achFour[2] = ((achThree[1] & 0x0f) << 2) + ((achThree[2] & 0xc0) >> 6);
       achFour[3] =   achThree[2] & 0x3f;
 
-      for (j = 0; j < iHexSize+1; j++)
+      for (int j = 0; j < iHexSize+1; j++)
       {
-         achEncodedBuffer[iEncodedSize++] = b64table[(unsigned int)achFour[j]];
+         out.data[iEncodedSize++] = b64table[(unsigned int)achFour[j]];
       }
 
-      for(j = iHexSize; j < 3; j++)
+      for(int j = iHexSize; j < 3; j++)
       {
-         achEncodedBuffer[iEncodedSize++] = '=';
+         out.data[iEncodedSize++] = '=';
       }
    }
 
-   return iEncodedSize;
+   // This is the actual size of the data
+   out.len = iEncodedSize;
+
+   return out;
 }
-int base64decode(unsigned char* achEncodedBuffer, int iEncodedSize, unsigned char* achHexBuffer, int iHexMaxSize)
+Block base64decode(unsigned char* achEncodedBuffer, int iEncodedSize)
 {
-
    char achFour[4]  = {0};
+   int iDecodedSize = 0;
 
-   int iHexSize = 0;
+   // Create a Block object to be returned.
+   // Alloc the maximum size of the encoded data ( iEncodedSize * 3 / 4 )
+   Block temp(iEncodedSize*3/4);
 
-   if ( NULL == achHexBuffer || NULL == achEncodedBuffer || iEncodedSize <= 0 )
+   if ( NULL == achEncodedBuffer || iEncodedSize <= 0 )
    {
-      return 0;
-   }
-
-   if ( iHexMaxSize < iEncodedSize*3/4 )
-   {
-      return 0;
+      // return empty Block
+      return Block();
    }
 
    if ( iEncodedSize%4 != 0 )
    {
-      return 0;
+      // return empty Block
+      return Block();
    }
 
    while ( iEncodedSize > 0)
@@ -211,30 +240,25 @@ int base64decode(unsigned char* achEncodedBuffer, int iEncodedSize, unsigned cha
          achFour[i] = findIndex(*(achEncodedBuffer++));
       }
 
-      achHexBuffer[iHexSize++] = (achFour[0] << 2 ) | (achFour[1] >> 4 );
+      temp.data[iDecodedSize++] = (achFour[0] << 2 ) | (achFour[1] >> 4 );
       if ( achFour[2] < 64)
       {
-         achHexBuffer[iHexSize++] = (achFour[1] << 4 ) | (achFour[2] >> 2 );
+         temp.data[iDecodedSize++] = (achFour[1] << 4 ) | (achFour[2] >> 2 );
          if ( achFour[3] < 64)
          {
-            achHexBuffer[iHexSize++] = (achFour[2] << 6 ) | (achFour[3] >> 0 );
+            temp.data[iDecodedSize++] = (achFour[2] << 6 ) | (achFour[3] >> 0 );
          }
-         else
-         {
-            iHexSize = iHexSize;
-         }
-      }
-      else
-      {
-         iHexSize = iHexSize;
       }
 
       iEncodedSize -= 4;
    }
 
-   return iHexSize;
-}
+   // Copy to output block
+   Block out(iDecodedSize);
+   memcpy(out.data, temp.data, iDecodedSize );
 
+   return out;
+}
 
 // -----------------------------------------------------------------------------
 // Give a score to a block of plaintext by evaluating english letter frequency
@@ -310,7 +334,6 @@ void XOR_string(unsigned char* ucString, int len, char ch)
    }
 }
 
-
 // -----------------------------------------------------------------------------
 // Encrypt plaintext using a repeating-key XOR
 // -----------------------------------------------------------------------------
@@ -325,21 +348,9 @@ void XOR_encrypt(unsigned char* auchPlaintext, int iPlaintextSize, unsigned char
    return;
 }
 
-
 // -----------------------------------------------------------------------------
 // OpenSSL: 
 // -----------------------------------------------------------------------------
-bool generateRandomKey(unsigned char* auchKey, unsigned int iKeySize)
-{
-   if (!RAND_bytes(auchKey, iKeySize))
-   {
-      return false;
-   }
-
-   return true;
-
-}
-
 unsigned int getPKCS7paddedSize(unsigned int uiLen, unsigned int uiPadTo)
 {
    unsigned int uiPaddedSize = 0;
@@ -362,7 +373,6 @@ unsigned int getPKCS7paddedSize(unsigned int uiLen, unsigned int uiPadTo)
       return uiPaddedSize;
    }
 }
-
 bool validPKCS7padding( unsigned char* auchPlaintext, unsigned int uiLen, unsigned int* puiNewLen)
 {
    bool bValid = true;
@@ -477,29 +487,39 @@ void AES_ECB_Encrypt(unsigned char* auchPlaintext, unsigned int uiPlaintextLen, 
       }
    }
 
-   // Allocate the working buffer
-   pucWorkingBuffer = new unsigned char[uiWorkingSize];
-
-   // Copy to working buffer
-   memcpy(pucWorkingBuffer, auchPlaintext, uiPlaintextLen);
-
-   if ( bApplyPadding )
+   try
    {
-      // Apply padding, if needed
-      *puiCiphertextLen = applyPKCS7padding(pucWorkingBuffer, uiPlaintextLen, 16);
-   }
-   else
-   {
-      // No padding. In this case, ciphertext len equals plaintext len
-      *puiCiphertextLen = uiPlaintextLen;
-   }
+      // Allocate the working buffer
+      pucWorkingBuffer = new unsigned char[uiWorkingSize];
 
-   for (unsigned i = 0; i < *puiCiphertextLen; i += 16)
-   {
-      AES_ecb_encrypt(&pucWorkingBuffer[i], &auchCiphertext[i], &key, AES_ENCRYPT);
-   }
+      // Copy to working buffer
+      memcpy(pucWorkingBuffer, auchPlaintext, uiPlaintextLen);
 
-   delete[] pucWorkingBuffer;
+      if ( bApplyPadding )
+      {
+         // Apply padding, if needed
+         *puiCiphertextLen = applyPKCS7padding(pucWorkingBuffer, uiPlaintextLen, 16);
+      }
+      else
+      {
+         // No padding. In this case, ciphertext len equals plaintext len
+         *puiCiphertextLen = uiPlaintextLen;
+      }
+
+      for (unsigned i = 0; i < *puiCiphertextLen; i += 16)
+      {
+         AES_ecb_encrypt(&pucWorkingBuffer[i], &auchCiphertext[i], &key, AES_ENCRYPT);
+      }
+
+      // Clean up
+      delete[] pucWorkingBuffer;
+   }
+   catch(std::bad_alloc& e)
+   {
+      *puiCiphertextLen = 0;
+      memset( auchCiphertext, 0, sizeof( auchCiphertext ) );
+      printf("Allocation failed: %s\n", e.what() );
+   }
 
 }
 void AES_ECB_Decrypt(unsigned char* auchCiphertext, unsigned int uiCiphertextLen, unsigned char* auchPlaintext, unsigned int* puiPlaintextLen, unsigned char* aucKey, bool bRemovePadding = true)
@@ -542,36 +562,48 @@ void AES_CBC_Encrypt(unsigned char* auchPlaintext, unsigned int uiPlaintextLen, 
       }
    }
 
-   // Allocate the working buffer
-   pucWorkingBuffer = new unsigned char[uiWorkingSize];
-
-   // Copy to working buffer
-   memcpy(pucWorkingBuffer, auchPlaintext, uiPlaintextLen);
-
-   if ( bApplyPadding )
+   try
    {
-      // Apply padding, if needed
-      *puiCiphertextLen = applyPKCS7padding(pucWorkingBuffer, uiPlaintextLen, 16);
-   }
-   else
-   {
-      // No padding. In this case, ciphertext len equals plaintext len
-      *puiCiphertextLen = uiPlaintextLen;
-   }
+      // Allocate the working buffer
+      pucWorkingBuffer = new unsigned char[uiWorkingSize]; //TODO: Test this with a huge value of uiWorkingSize
 
-   // First step: first block XORed against IV
-   unsigned char auchToEncrypt[16] = { 0 };
-   XOR_encrypt(&pucWorkingBuffer[0], 16, aucIV, 16, auchToEncrypt);
+      // Copy to working buffer
+      memcpy(pucWorkingBuffer, auchPlaintext, uiPlaintextLen);
 
-   for (unsigned i = 0; i < *puiCiphertextLen; i += 16 )
-   {
-      AES_ecb_encrypt(auchToEncrypt, &auchCiphertext[i], &key, AES_ENCRYPT);
-
-      if ( i + 16 < *puiCiphertextLen)
+      if ( bApplyPadding )
       {
-         // Find the next IV
-         XOR_encrypt(&auchCiphertext[i], 16, &pucWorkingBuffer[i+16], 16, auchToEncrypt);
+         // Apply padding, if needed
+         *puiCiphertextLen = applyPKCS7padding(pucWorkingBuffer, uiPlaintextLen, 16);
       }
+      else
+      {
+         // No padding. In this case, ciphertext len equals plaintext len
+         *puiCiphertextLen = uiPlaintextLen;
+      }
+
+      // First step: first block XORed against IV
+      unsigned char auchToEncrypt[16] = { 0 };
+      XOR_encrypt(&pucWorkingBuffer[0], 16, aucIV, 16, auchToEncrypt);
+
+      for (unsigned i = 0; i < *puiCiphertextLen; i += 16 )
+      {
+         AES_ecb_encrypt(auchToEncrypt, &auchCiphertext[i], &key, AES_ENCRYPT);
+
+         if ( i + 16 < *puiCiphertextLen)
+         {
+            // Find the next IV
+            XOR_encrypt(&auchCiphertext[i], 16, &pucWorkingBuffer[i+16], 16, auchToEncrypt);
+         }
+      }
+
+      // Clean up
+      delete[] pucWorkingBuffer;
+   }
+   catch(std::bad_alloc& e)
+   {
+      *puiCiphertextLen = 0;
+      memset( auchCiphertext, 0, sizeof( auchCiphertext ) );
+      printf("Allocation failed: %s\n", e.what() );
    }
 }
 void AES_CBC_Decrypt(unsigned char* auchCiphertext, unsigned int uiCiphertextLen, unsigned char* auchPlaintext, unsigned int* puiPlaintextLen, unsigned char* aucKey, unsigned char* aucIV, bool bRemovePadding = true)
@@ -626,4 +658,67 @@ int detecECBMode(unsigned char* auchCiphertext, unsigned int uiCiphertextLen, un
    }
 
    return iMode;
+}
+
+void AES_CTR_Encrypt(unsigned char* auchInput, unsigned int uiInputLen, unsigned char* auchOutput, unsigned int* puiOutputLen, unsigned char* aucKey, uint64_t ui64Nonce)
+{
+   AES_KEY key;
+   AES_set_encrypt_key(aucKey, 8 * AES_BLOCK_SIZE, &key);
+
+   unsigned char ucFirstStage[16]  = {0};
+   unsigned char ucMiddleStage[16] = {0};
+
+   // --------------------------------------------------------------------------------
+   // CTR MODE
+   // First, concat the nonce and the counter, which starts at zero (ucFirstStage).
+   // Encrypt it under AES (ucMiddleStage).
+   // Finally, XOR against the auchInput to get auchOutput.
+   // (see https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#Counter_(CTR))
+   // --------------------------------------------------------------------------------
+
+   // ucFirstStage: first 8 bytes are the nonce
+   memcpy( &ucFirstStage[0], &ui64Nonce, sizeof( ui64Nonce ) );
+
+   // ucFirstStage: last 8 bytes are the counter
+   // Get a pointer to a 64bit unsigned int and
+   // give it the address of the 8th byte of ucFirstStage
+   uint64_t* pui64Counter = (uint64_t*)&ucFirstStage[8];
+   *pui64Counter = 0;
+
+   // Number of blocks
+   int iNumOfBlocks = *puiOutputLen / 16;
+   if ( *puiOutputLen % 16 != 0 )
+   {
+      iNumOfBlocks++;
+      //printf( "Size %d, blocks %d\n", *puiOutputLen, iNumOfBlocks );
+   }
+
+   for (int i = 0; i < iNumOfBlocks; i++)
+   {
+      // Block cipher encryption
+      AES_ecb_encrypt(ucFirstStage, ucMiddleStage, &key, AES_ENCRYPT);
+
+      // ----------------------------------------------------------------------------
+      // Now, XOR the Middle-Stage witht the Input
+      // Must pay attention to the fact that, in CTR mode, padding is not mandatory, 
+      // so the uiInputLen is probably not  a multiple of AES_BLOCK_SIZE.
+      // This means that, for the last block, we don't use all the bytes 
+      // of the ucMiddleStage to XOR against auchInput
+      // ----------------------------------------------------------------------------
+      if ( (int)uiInputLen >= (i+1) * AES_BLOCK_SIZE)
+      {
+         // This is not the last block or it is a full block
+         XOR_encrypt(ucMiddleStage, 16, &auchInput[i * AES_BLOCK_SIZE], 16, &auchOutput[i * AES_BLOCK_SIZE]);
+      }
+      else
+      {
+         // This is the last block. How many bytes to copy?
+         int iConsideredBytes = uiInputLen - (i * AES_BLOCK_SIZE);
+         //printf( "%d bytes remaining\n", iConsideredBytes );
+         XOR_encrypt(ucMiddleStage, iConsideredBytes, &auchInput[i * AES_BLOCK_SIZE], iConsideredBytes, &auchOutput[i * AES_BLOCK_SIZE]);
+      }
+
+      // Increment counter
+      *pui64Counter += 1;
+   }
 }

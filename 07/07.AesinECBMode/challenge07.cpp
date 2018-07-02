@@ -8,7 +8,6 @@
 
 unsigned char auchKey[16] =  { 0x59, 0x45, 0x4C, 0x4C, 0x4F, 0x57, 0x20, 0x53, 0x55, 0x42, 0x4D, 0x41, 0x52, 0x49, 0x4E, 0x45 };
 
-
 int main()
 {
    printf("|- - - - - - - - - - - - - - -\n");
@@ -18,8 +17,8 @@ int main()
    // ------------------------------------------------------------------------------
    // Read the input file
    // ------------------------------------------------------------------------------
-   Block base64Text;
-   if (!BlockReadFile(&base64Text, "07.txt"))
+   Block base64Text = ReadFile( "07.txt" );
+   if ( 0 == base64Text.len )
    {
       printf("Error reading file\n");
       pause();
@@ -27,14 +26,10 @@ int main()
    }
 
    // Base64 decode the input 
-   int iMaximumSize = base64Text.len *3 / 4;
-   
-   Block ciphertext;
-   ciphertext.alloc(iMaximumSize);
-   ciphertext.len = base64decode(base64Text.data, base64Text.len, ciphertext.data, iMaximumSize);
+   Block ciphertext = base64decode(base64Text.data, base64Text.len);
   
-   Block plaintext;
-   plaintext.alloc(ciphertext.len);
+   // Alloc the plaintext
+   Block plaintext(ciphertext.len);
 
    //---[ Decrypt ]----------------------------------------------------------------------
    AES_ECB_Decrypt(ciphertext.data, ciphertext.len, plaintext.data, &plaintext.len, auchKey, true);

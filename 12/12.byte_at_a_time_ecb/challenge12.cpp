@@ -7,7 +7,7 @@
 #include "crypto_util.h"
 
 
-int encryptSecretKey(unsigned char* auchPlaintext, unsigned int uiPlaintextLen, Block* ciphertext)
+Block encryptSecretKey(unsigned char* auchPlaintext, unsigned int uiPlaintextLen)
 {
    // Fixed, secret key
    unsigned char auchKey[16] = { 0xAF, 0x89, 0x83, 0x29, 0x08, 0xD7, 0xF8, 0x97, 0x24, 0x89, 0xF7, 0x28, 0x9F, 0x78, 0x9E, 0x15 };
@@ -32,19 +32,14 @@ int encryptSecretKey(unsigned char* auchPlaintext, unsigned int uiPlaintextLen, 
       0x59, 0x6E, 0x6B, 0x4B
    };
 
-   // Since the string to be appended do not change, perform the base64 decoding only once
-   static Block toAppend_hex;
-   if ( 0 == toAppend_hex.len)
-   {
-      // Base64 decode it
-      int iMaximumSize = sizeof(toAppend) * 3 / 4;
-      toAppend_hex.alloc(iMaximumSize);
-      toAppend_hex.len = base64decode(toAppend, sizeof(toAppend), toAppend_hex.data, iMaximumSize);
-   }
+   // Decode the string
+   Block toAppend_hex = base64decode(toAppend, sizeof(toAppend));
 
    // Append the bytes
    Block newPlaintext(uiPlaintextLen + toAppend_hex.len);
-   ciphertext->alloc( getPKCS7paddedSize(newPlaintext.len, AES_BLOCK_SIZE) );
+
+   // This block will be returned by the function
+   Block ciphertext( getPKCS7paddedSize(newPlaintext.len, AES_BLOCK_SIZE) );
 
    int iOffset = 0;
 
@@ -55,11 +50,10 @@ int encryptSecretKey(unsigned char* auchPlaintext, unsigned int uiPlaintextLen, 
    iOffset += toAppend_hex.len;
 
    // Perform the encryption
-   AES_ECB_Encrypt(newPlaintext.data, newPlaintext.len, ciphertext->data, &ciphertext->len, auchKey, true);
+   AES_ECB_Encrypt(newPlaintext.data, newPlaintext.len, ciphertext.data, &ciphertext.len, auchKey, true);
 
-   return 0;
+   return ciphertext;
 }
-
 
 int main()
 {
@@ -69,7 +63,6 @@ int main()
 
    // 1) Discover the block size of the cipher
    Block tst_input;
-   Block tst_output;
 
    unsigned int uiMinLen = -1; // set the highest possible value as starting value
    unsigned int uiMaxLen = 0;  // set the lowest  possible value as starting value
@@ -81,9 +74,9 @@ int main()
    for (int i = 1; i <= 17; i++)
    {
       tst_input.alloc(i);
-      memset(tst_input.data, 'A', i);
+      tst_input.set_to( 'A' );
 
-      encryptSecretKey(tst_input.data, tst_input.len, &tst_output);
+      Block tst_output = encryptSecretKey(tst_input.data, tst_input.len);
 
       if ( tst_output.len < uiMinLen )
       {
@@ -99,16 +92,14 @@ int main()
 
    uiBlockSize = uiMaxLen - uiMinLen;
    printf("The block size of the cipher is %d.\n", uiBlockSize);
-   printf("The length of the sufixLen is %d.\n", uiSufixLen);
+   printf("The length of the sufix is %d.\n", uiSufixLen);
 
 
    // 2) Discover the mode of operation
    Block input(64);
    input.set_to_zeroes();
 
-   Block output;
-
-   encryptSecretKey(input.data, input.len, &output);
+   Block output = encryptSecretKey(input.data, input.len);
 
    int iDetected = detecECBMode(output.data, output.len, uiBlockSize);
    printf("Block cipher mode is %s\n", iDetected == ECB_MODE ? "ECB" : "CBC");
@@ -151,12 +142,9 @@ int main()
    // Complexity: 138 * 256
    // -----------------------------------------------------------------------------
    
+   // Need a couple blocks for testing
    Block one_byte_short;
-   Block one_byte_short_output;
-
    Block tst_against;
-   Block tst_against_output;
-
    Block secret_data(uiSufixLen);
 
    printf("Decrypting the unknown string");
@@ -170,7 +158,7 @@ int main()
       memset(one_byte_short.data, 'A', one_byte_short.len - 1 -i );
       //memcpy(&one_byte_short.data[one_byte_short.len - i - 1], secret_data.data, i);
 
-      encryptSecretKey(one_byte_short.data, (one_byte_short.len -1 - i), &one_byte_short_output);
+      Block one_byte_short_output = encryptSecretKey(one_byte_short.data, (one_byte_short.len -1 - i));
 
       // Test against all possibilities
       tst_against.alloc( (i / uiBlockSize) * uiBlockSize + uiBlockSize );
@@ -181,7 +169,7 @@ int main()
          memcpy(&tst_against.data[tst_against.len - i - 1], secret_data.data, i);
          tst_against.data[tst_against.len - 1] = j;
 
-         encryptSecretKey(tst_against.data, tst_against.len, &tst_against_output);
+         Block tst_against_output = encryptSecretKey(tst_against.data, tst_against.len);
 
          if (0 == memcmp(one_byte_short_output.data, tst_against_output.data, tst_against.len))
          {

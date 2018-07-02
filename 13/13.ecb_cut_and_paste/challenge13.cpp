@@ -10,9 +10,12 @@
 unsigned char auchKey[16] = { 0xAF, 0x89, 0x83, 0x29, 0x08, 0xD7, 0xF8, 0x97, 0x24, 0x89, 0xF7, 0x28, 0x9F, 0x78, 0x9E, 0x15 };
 
 
-bool profile_for(const char* pchEmail, Block* output)
+Block profile_for(const char* pchEmail)
 {
    static unsigned int uiUID = 1;
+
+   // Create a Block object to be returned.
+   Block output;
 
    // Convert UID into string
    char strUID[5] = { 0 };
@@ -30,37 +33,37 @@ bool profile_for(const char* pchEmail, Block* output)
    uiUID++;
 
    // Format the cookie
-   output->alloc(role.getLength() + uid.getLength() + email.getLength() + 5); // 3 * '=' + 2 * '&'
+   output.alloc(role.getLength() + uid.getLength() + email.getLength() + 5); // 3 * '=' + 2 * '&'
    int iOffset = 0;
 
    for (DictionaryEntry* entry = &email; entry; entry = entry->nextEntry)
    {
       // Add the key
-      memcpy(&output->data[iOffset], entry->key.data, entry->key.len);
+      memcpy(&output.data[iOffset], entry->key.data, entry->key.len);
       iOffset += entry->key.len;
 
       // Add a '='
-      output->data[iOffset] = '=';
+      output.data[iOffset] = '=';
       iOffset++;
 
       // Add the value
-      memcpy(&output->data[iOffset], entry->value.data, entry->value.len);
+      memcpy(&output.data[iOffset], entry->value.data, entry->value.len);
       iOffset += entry->value.len;
 
       // Add either a '&' or 0x00
       if (entry->nextEntry)
       {
          // Add a '&'
-         output->data[iOffset] = '&';
+         output.data[iOffset] = '&';
          iOffset++;
       }
       else
       {
-         // We are not adding a 0x00, so output->data should NOT be trated as a C-string
+         // We are not adding a 0x00, so output->data should NOT be treated as a C-string
       }
    }
 
-   return true;
+   return output;
 }
 
 void parseProfile(unsigned char* uchToBeParsed, unsigned int uiLen)
@@ -76,7 +79,7 @@ void parseProfile(unsigned char* uchToBeParsed, unsigned int uiLen)
       return;
    }
 
-   printf("\nParsing profile:\n");
+   printf("Parsing profile:\n");
    try
    {
       for (unsigned int i = 0; i < tokens.size(); i++)
@@ -98,16 +101,18 @@ void parseProfile(unsigned char* uchToBeParsed, unsigned int uiLen)
    }
 }
 
-void encryptUserProfile(const char* pchEmail, Block* ciphertext)
+Block encryptUserProfile(const char* pchEmail)
 {
    // Create a profile
-   Block plaintext;
-   profile_for(pchEmail, &plaintext);
+   Block plaintext = profile_for(pchEmail);
 
-   ciphertext->alloc(getPKCS7paddedSize(plaintext.len, AES_BLOCK_SIZE));
+   // This block will be returned by the function
+   Block ciphertext(getPKCS7paddedSize(plaintext.len, AES_BLOCK_SIZE));
 
    // Encrypt
-   AES_ECB_Encrypt(plaintext.data, plaintext.len, ciphertext->data, &ciphertext->len, auchKey, true);
+   AES_ECB_Encrypt(plaintext.data, plaintext.len, ciphertext.data, &ciphertext.len, auchKey, true);
+
+   return ciphertext;
 }
 
 void decryptUserProfile(Block* ciphertext)
@@ -133,8 +138,7 @@ void createAdminProfile(const char* pchEmail)
    const char achAdmin[26] = { 0x23, 0x23, 0x23, 0x23, 0x23, 0x23, 0x23, 0x23, 0x23, 0x23, 0x61, 0x64, 0x6D, 0x69, 0x6E,
                                0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B };
 
-   Block crafted;
-   encryptUserProfile(achAdmin, &crafted);
+   Block crafted = encryptUserProfile(achAdmin);
 
    // We are intereted on the second block only
    unsigned char auchCrafted[AES_BLOCK_SIZE] = { 0 };
@@ -145,48 +149,41 @@ void createAdminProfile(const char* pchEmail)
    // The length of 'email=' +  '&uid=100&role=' is 20
    // This means that the email we provide must be 12 mod 16
    // -----------------------------------------------------------------------------------------------------------------
-   Block hacked;
-   encryptUserProfile(pchEmail, &hacked);
+   Block hacked = encryptUserProfile(pchEmail);
 
    // Now, we change the last block of the ciphertext with the one we crafted
    memcpy(&hacked.data[hacked.len - AES_BLOCK_SIZE], auchCrafted, AES_BLOCK_SIZE);
 
+   // Printf information
+   printf("\n--- Creating a fake admin account ---\n" );
+
    // Finally, decrypt it
    decryptUserProfile(&hacked);
 }
-
-
 
 int main()
 {
    printf("|- - - - - - - - - - - - - - - - \n");
    printf("|        ECB cut & paste        |\n");
    printf("|- - - - - - - - - - - - - - - - \n");
-
-
-   Block cookie;
    
    // a) Test: don't allow '&' and '='
-   printf("Don't allow emails like \'foo@bar.com&role=admin\'\n");
+   printf("Don't allow emails like \'foo@bar.com&role=admin\'.\n");
+   printf("An email of that sort would result in something like:\n-> " );
 
-   if ( profile_for("foo@bar.com&role=admin", &cookie) )
-   {
-      PrintToConsole(cookie.data, cookie.len);
-   }
-
+   Block invalid_chars = profile_for("foo@bar.com&role=admin");
+   PrintToConsole(invalid_chars.data, invalid_chars.len, true, false, true);
 
    // b) Normal case: Encrypt the encoded user profile under the key;
    int i = 1;
    while(i--)
    {
-      Block ciphertext;
-      encryptUserProfile("foo@bar.com", &ciphertext);
+      Block ciphertext = encryptUserProfile("foo@bar.com");
 
       // Decrypt the encoded user profile and parse it.
       decryptUserProfile(&ciphertext);
    }
    
-
    // c) Using only the user input to profile_for(), make a role = admin profile.
    // strlen(email) must be 12 mod 16
    createAdminProfile("ab@gmail.com");

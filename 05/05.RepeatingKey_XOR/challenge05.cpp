@@ -18,7 +18,6 @@ unsigned char aucPlaintext[74] = {
 
 unsigned char aucKey[3] = { 'I', 'C', 'E' };
 
-
 int main()
 {
    printf("|- - - - - - - - - - - - - - -\n");

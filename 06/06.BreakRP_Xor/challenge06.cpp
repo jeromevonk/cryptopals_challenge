@@ -9,7 +9,6 @@
 // Defines for this challenge
 #define MAX_KEYSIZE 40
 
-
 int guess_KeySize(unsigned char* auchCryptogram, int iLen)
 {
    //int iNumOfSamples    = iLen/MAX_KEYSIZE;
@@ -79,7 +78,6 @@ unsigned char discover_key_byte(unsigned char* auchCryptogram, int iCryptogramLe
    return ucBestByte;
 }
 
-
 int main()
 {
    printf("|- - - - - - - - - - - - - - -\n");
@@ -89,20 +87,16 @@ int main()
    // ------------------------------------------------------------------------------
    // Read the input file
    // ------------------------------------------------------------------------------
-   Block base64Text;
-   if (!BlockReadFile(&base64Text, "06.txt"))
+   Block base64Text = ReadFile( "06.txt" );
+   if ( 0 == base64Text.len )
    {
       printf("Error reading file\n");
       pause();
       return -1;
    }
 
-   // Base64 decode the input 
-   int iMaximumSize = base64Text.len *3 / 4;
-   
-   Block HexBuffer;
-   HexBuffer.alloc(iMaximumSize);
-   HexBuffer.len = base64decode(base64Text.data, base64Text.len, HexBuffer.data, iMaximumSize);
+   // Base64 decode the input
+   Block HexBuffer = base64decode(base64Text.data, base64Text.len);
    
    // -----------------------------------------------------------------------------
    // Approach no 1: guess the keysize, divide the ciphertext in 'keysize' blocks

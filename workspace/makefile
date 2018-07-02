@@ -61,7 +61,10 @@ challenge15: $(shell find ../15/ -name '*.cpp')
 	$(CC) $(shell find ../15/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge15
 
 challenge16: $(shell find ../16/ -name '*.cpp')
-	$(CC) $(shell find ../16/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge16		
+	$(CC) $(shell find ../16/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge16
+    
+challenge17: $(shell find ../17/ -name '*.cpp')
+	$(CC) $(shell find ../17/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge17		
 
 clean: 
 	rm -f $(BUILD_DIR)*

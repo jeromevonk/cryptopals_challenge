@@ -22,10 +22,12 @@ int main()
       Block key(AES_BLOCK_SIZE);
       Block IV(AES_BLOCK_SIZE);
 
-      memset(plaintext.data, 0xAA, plaintext.len);
-      memset(key.data, 0xBB, AES_BLOCK_SIZE);
-      memset(IV.data,  0xCC, AES_BLOCK_SIZE);
+      // Set plaintext, key, IV
+      plaintext.set_to( 0xAA );
+      key.set_to( 0xBB );
+      IV.set_to( 0xCC );
 
+      // Encrypt
       AES_CBC_Encrypt(plaintext.data, plaintext.len, ciphertext.data, &ciphertext.len, key.data, IV.data, false);
 
       // Print to console
@@ -55,9 +57,10 @@ int main()
       Block key(AES_BLOCK_SIZE);
       Block IV(AES_BLOCK_SIZE);
 
+      // Set ciphertext, key, IV
       memcpy(ciphertext.data, auchCiphertext, ciphertext.len);
-      memset(key.data, 0xEE, key.len);
-      memset(IV.data,  0xFF, key.len);
+      key.set_to( 0xEE );
+      IV.set_to( 0xFF );
 
       // ----------------------------------------
       // a. Decrypt without removing the padding
@@ -65,7 +68,6 @@ int main()
       AES_CBC_Decrypt(ciphertext.data, ciphertext.len, plaintext.data, &plaintext.len, key.data, IV.data, false);
       printf("\n\n\tPlaintext is:\n");
       PrintToConsole(plaintext.data, plaintext.len, false, true);
-
 
       // ----------------------------------------
       // b. Decrypt removing the padding
@@ -95,10 +97,12 @@ int main()
       Block key(AES_BLOCK_SIZE);
       Block IV(AES_BLOCK_SIZE);
 
+      // Set plaintext, key, IV
       memcpy(plaintext.data, auchPlaintext, plaintext.len);
       memcpy(key.data, auchKey, key.len);
       memcpy(IV.data,  auchIV,  IV.len);
 
+      // Encrypt
       AES_CBC_Encrypt(plaintext.data, plaintext.len, ciphertext.data, &ciphertext.len, key.data, IV.data, true);
 
       // Print to console
@@ -112,8 +116,8 @@ int main()
    // ----------------------------------------------------------
    {
       // Read the input file
-      Block base64Text;
-      if (!BlockReadFile(&base64Text, "10.txt"))
+      Block base64Text = ReadFile( "10.txt" );
+      if ( 0 == base64Text.len )
       {
          printf("Error reading file\n");
          pause();
@@ -121,20 +125,47 @@ int main()
       }
 
       // Base64 decode the input 
-      int iMaximumSize = base64Text.len * 3 / 4;
-
-      Block HexBuffer(iMaximumSize);
-      HexBuffer.len = base64decode(base64Text.data, base64Text.len, HexBuffer.data, iMaximumSize);
-
-      Block plaintext(HexBuffer.len);
-      Block ciphertext(HexBuffer.len);
+      Block ciphertext = base64decode(base64Text.data, base64Text.len);
+      Block plaintext(ciphertext.len);
       Block key(16);
       Block IV(16);
 
-      memcpy(ciphertext.data, HexBuffer.data, HexBuffer.len);
-      memcpy(key.data, "YELLOW SUBMARINE", 16);
-      memset(IV.data, 0x00, IV.len);
+      // Set key, IV
+      key.set_data("YELLOW SUBMARINE", 16);
+      IV.set_to_zeroes();
 
+      // Decrypt
+      AES_CBC_Decrypt(ciphertext.data, ciphertext.len, plaintext.data, &plaintext.len, key.data, IV.data, true);
+
+      // Print to console
+      printf("\n\n\tPlaintext is:\n");
+      PrintToConsole(plaintext.data, plaintext.len);
+   }
+
+   // ----------------------------------------------------------
+   // 4 ) Encrypt a huge file
+   // ----------------------------------------------------------
+   {
+      // Read the input file
+      Block base64Text = ReadFile( "10.txt" );
+      if ( 0 == base64Text.len )
+      {
+         printf("Error reading file\n");
+         pause();
+         return -1;
+      }
+
+      // Base64 decode the input 
+      Block ciphertext = base64decode(base64Text.data, base64Text.len);
+      Block plaintext(ciphertext.len);
+      Block key(16);
+      Block IV(16);
+
+      // Set key, IV
+      key.set_data("YELLOW SUBMARINE", 16);
+      IV.set_to_zeroes();
+
+      // Decrypt
       AES_CBC_Decrypt(ciphertext.data, ciphertext.len, plaintext.data, &plaintext.len, key.data, IV.data, true);
 
       // Print to console

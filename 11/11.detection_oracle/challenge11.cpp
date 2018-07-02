@@ -14,16 +14,13 @@ int encryptUnderUnknowKey(unsigned char* auchPlaintext, unsigned int uiPlaintext
    int iMode = -1;
 
    // Generate a 16-byte key
-   Block key(AES_BLOCK_SIZE);
-   generateRandomKey(key.data, key.len);
+   Block key = randomBlock(AES_BLOCK_SIZE);
 
    // Append 5-10 bytes before
-   Block randomBefore( (rand() % 6) + 5 );
-   generateRandomKey(randomBefore.data, randomBefore.len);
+   Block randomBefore = randomBlock( (rand() % 6) + 5 );
 
    // Append 5-10 bytes after
-   Block randomAfter( (rand() % 6) + 5 );
-   generateRandomKey(randomAfter.data, randomAfter.len);
+   Block randomAfter = randomBlock( (rand() % 6) + 5 );
 
    // Under the hood, append the bytes
    Block newPlaintext(uiPlaintextLen + randomBefore.len + randomAfter.len);
@@ -41,7 +38,6 @@ int encryptUnderUnknowKey(unsigned char* auchPlaintext, unsigned int uiPlaintext
    
    //printf("\nUnder the hood plaintext is:\n");
    //PrintToConsole(newPlaintext.data, newPlaintext.len, false);
-
    
    // Which scheme will we use?
    if ( rand() % 2 )
@@ -57,8 +53,7 @@ int encryptUnderUnknowKey(unsigned char* auchPlaintext, unsigned int uiPlaintext
       iMode = CBC_MODE;
       
       // Use a random IV
-      Block IV(AES_BLOCK_SIZE);
-      generateRandomKey(IV.data, IV.len);
+      Block IV = randomBlock(AES_BLOCK_SIZE);
 
       // Encrypt
       AES_CBC_Encrypt(newPlaintext.data, newPlaintext.len, auchCiphertext, puiCiphertextLen, key.data, IV.data, true);
@@ -66,7 +61,6 @@ int encryptUnderUnknowKey(unsigned char* auchPlaintext, unsigned int uiPlaintext
 
    return iMode;
 }
-
 
 int main()
 {
@@ -83,8 +77,8 @@ int main()
    Block input(112);
    memcpy(input.data, "ThisIsJustATest!________________________________________________________________________________________________", 112);
 #else
-   Block input;
-   if (!BlockReadFile(&input, "11.jpg"))
+   Block input = ReadFile( "11.jpg" );
+   if ( 0 == input.len )
    {
       printf("Error reading file\n");
       pause();
@@ -92,8 +86,8 @@ int main()
    }
 #endif
 
-   Block output(input.len + 32 + 16); // give space for padding and extra numbers
-   memset(output.data, 0, output.len);
+   // Ciphertext: give enough space for padding and extra numbers
+   Block ciphertext(input.len + 32 + 16); 
 
    // ------------------------------------------------------------------------------
    // Perform a bunch of operations
@@ -101,8 +95,8 @@ int main()
    bool bSucceeded = true;
    for (int i = 0; i < NUMBER_OF_TESTS; i++)
    {
-      int iMode     = encryptUnderUnknowKey(input.data, input.len, output.data, &output.len);
-      int iDetected = detecECBMode(output.data, output.len, 16);
+      int iMode     = encryptUnderUnknowKey(input.data, input.len, ciphertext.data, &ciphertext.len);
+      int iDetected = detecECBMode(ciphertext.data, ciphertext.len, 16);
 
       if ( iMode == iDetected )
       {
@@ -117,7 +111,7 @@ int main()
          bSucceeded = false;
          printf("\nProblem: Mode = %d, detected %d", iMode, iDetected);
          printf("\nCiphertext was:\n");
-         PrintToConsole(output.data, output.len, false, true);
+         PrintToConsole(ciphertext.data, ciphertext.len, false, true);
          pause();
       }
    }

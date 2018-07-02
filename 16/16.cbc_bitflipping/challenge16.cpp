@@ -9,7 +9,7 @@
 // Globals for this challenge
 unsigned char auchKey[16] = { 0xAF, 0x89, 0x83, 0x29, 0x08, 0xD7, 0xF8, 0x97, 0x24, 0x89, 0xF7, 0x28, 0x9F, 0x78, 0x9E, 0x15 };
 
-void encryptUserData(const char* pchUserData, Block* ciphertext)
+Block encryptUserData(const char* pchUserData)
 {
    char toPrepend[] = "comment1=cooking MCs;userdata=";
    char toAppend[]  = ";comment2= like a pound of bacon";
@@ -20,7 +20,9 @@ void encryptUserData(const char* pchUserData, Block* ciphertext)
 
    // Prepend/append the bytes
    Block plaintext( strlen(toPrepend) + valid_data.length() + strlen(toAppend) );
-   ciphertext->alloc(getPKCS7paddedSize(plaintext.len, AES_BLOCK_SIZE));
+
+   // Ciphertext Block will be returned.
+   Block ciphertext( getPKCS7paddedSize( plaintext.len, AES_BLOCK_SIZE ) );
 
    int iOffset = 0;
 
@@ -38,7 +40,9 @@ void encryptUserData(const char* pchUserData, Block* ciphertext)
    IV.set_to_zeroes();
 
    // Encrypt
-   AES_CBC_Encrypt(plaintext.data, plaintext.len, ciphertext->data, &ciphertext->len, auchKey, IV.data, true);
+   AES_CBC_Encrypt(plaintext.data, plaintext.len, ciphertext.data, &ciphertext.len, auchKey, IV.data, true);
+
+   return ciphertext;
 }
 
 bool checkForAdminRights(Block* ciphertext)
@@ -113,18 +117,15 @@ int main()
    printf("|    CBC bitflipping attacks     |\n");
    printf("|- - - - - - - - - - - - - - - - \n");
 
-   Block ciphertext;
-
    // --------------------------------------------------------------------------------
    // It should not be possible to produce a admin profile just by providing the input
    // --------------------------------------------------------------------------------
 
    // Create an entry
-   encryptUserData("JohnDoe;admin=true", &ciphertext);
+   Block ciphertext = encryptUserData("JohnDoe;admin=true");
 
    // Decrypt an check for admin rights
    checkForAdminRights(&ciphertext);
-
 
    // ------------------------------------------------------------------------------------------
    // Modify the ciphertext to get admin rights
@@ -133,17 +134,17 @@ int main()
    // so our bytes of interest are: 48 and 54
    // Knowing that, we mess with the bytes of the previous block: 32 and 38
    // The block containing the bytes we mess with will become rubish, but we consider
-   // that it is acceptable, for the challenge, that the userdata is rubbish
+   // that it is acceptable, for this challenge, that the userdata is rubbish.
    // ------------------------------------------------------------------------------------------
 
    // Create an entry
-   encryptUserData("This data is bogus:admin<true", &ciphertext);
+   ciphertext = encryptUserData("This data is bogus:admin<true");
 
    // Modify the ciphertext
    ciphertext.data[32] ^= 0x01;
    ciphertext.data[38] ^= 0x01;
 
-   // Decrypt an check for admin rights
+   // Decrypt and check for admin rights
    checkForAdminRights(&ciphertext);
 
    pause();

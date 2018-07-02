@@ -9,21 +9,19 @@
 // Globals for this challenge
 unsigned char auchServerKey[16] = { 0xAF, 0x89, 0x83, 0x29, 0x08, 0xD7, 0xF8, 0x97, 0x24, 0x89, 0xF7, 0x28, 0x9F, 0x78, 0x9E, 0x15 };
 
-#define NUM_TEST_STRINGS 10
-
-void serverEncrypt(Block* plaintext, Block* ciphertext, Block* IV)
+Block serverEncrypt(Block* plaintext, Block* IV)
 {
    // Allocate the ciphertext
-   ciphertext->alloc(getPKCS7paddedSize(plaintext->len, AES_BLOCK_SIZE));
+   Block ciphertext(getPKCS7paddedSize(plaintext->len, AES_BLOCK_SIZE));
 
    // The IV will be zero
    IV->alloc(AES_BLOCK_SIZE);
    IV->set_to_zeroes();
 
    // Encrypt
-   AES_CBC_Encrypt(plaintext->data, plaintext->len, ciphertext->data, &ciphertext->len, auchServerKey, IV->data, true);
+   AES_CBC_Encrypt(plaintext->data, plaintext->len, ciphertext.data, &ciphertext.len, auchServerKey, IV->data, true);
 
-   return;
+   return ciphertext;
 }
 
 bool serverCheckPadding(Block* ciphertext, Block* IV)
@@ -45,7 +43,7 @@ bool serverCheckPadding(Block* ciphertext, Block* IV)
    return bValidPadding;
 }
 
-void attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition, Block* revealed)
+Block attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition)
 {
    // ------------------------------------------------------------------------------------------------------------------
    // We'll attack one block of the ciphertext at a time: the block has AES_BLOCK_SIZE and starts at uiAttackPosition.
@@ -63,6 +61,9 @@ void attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition, Bl
    // When we get a valid padding, we assume we know what is P2 (either 0x01, 0x02 0x02, 0x03 0x03 0x03, etc) because we
    // crafted block C1' to reach that purpose.
    // ------------------------------------------------------------------------------------------------------------------
+
+   // Revealed block of plaintext will be returned by this function
+   Block revealed( AES_BLOCK_SIZE );
 
    // Craft a block
    Block crafted( 2 * AES_BLOCK_SIZE );
@@ -87,8 +88,8 @@ void attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition, Bl
          unsigned char chPadding = 16 - chByteAttacked;
 
          // Bytes from [0 to chByteAttacked] are not considered
-         // This is not needed, but setting bytes to zero helps at debugging
-         memset( &crafted.data[0],  0, crafted.len );
+         // This is not needed, but setting bytes to zero helps debugging
+         crafted.set_to_zeroes();
 
          // We will try values from [0 to 255] for chByteAttacked position
          crafted.data[chByteAttacked] = ch;
@@ -145,8 +146,8 @@ void attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition, Bl
             unsigned char P2 = C1 ^ I2;
 
             // Store information
-            intermediate.data[chByteAttacked]  = I2;
-            revealed->data[chByteAttacked]     = P2;
+            intermediate.data[chByteAttacked] = I2;
+            revealed.data[chByteAttacked]     = P2;
 
             break;
          }
@@ -160,26 +161,28 @@ void attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition, Bl
       }
    }
 
-   return;
+   return revealed;
 }
 
-void attack(Block* ciphertext, Block* IV, Block* full_plaintext)
+Block attack(Block* ciphertext, Block* IV )
 {
-   // Save a block of the plaintext
-   Block fragment( AES_BLOCK_SIZE );
+   // Full plaintext will be returned by this function
+   Block full_plaintext( ciphertext->len );
 
    // Attack every block
    for ( unsigned int iPos = 0; iPos < ciphertext->len; iPos += AES_BLOCK_SIZE )
    {
       //printf("Attacking block %d - position %d\n", (iPos/16+1), iPos );
-      attackBlock( ciphertext, IV, iPos, &fragment );
+      Block fragment = attackBlock( ciphertext, IV, iPos);
 
       // Copy plaintext fragment
-      memcpy( &full_plaintext->data[iPos], &fragment.data[0], AES_BLOCK_SIZE );
+      memcpy( &full_plaintext.data[iPos], &fragment.data[0], AES_BLOCK_SIZE );
    }
 
    // Remove padding
-   full_plaintext->len = removePCKS7padding(full_plaintext->data, full_plaintext->len);
+   full_plaintext.len = removePCKS7padding(full_plaintext.data, full_plaintext.len);
+
+   return full_plaintext;
 }
 
 int main()
@@ -188,7 +191,7 @@ int main()
    printf("|    The CBC padding oracle     |\n");
    printf("|- - - - - - - - - - - - - - - - \n");
 
-   unsigned char auchTestStrings[NUM_TEST_STRINGS][77] =
+   std::vector<char*> test_strings = 
    {
       "MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=",
       "MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic=",
@@ -202,34 +205,30 @@ int main()
       "MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93"
    };
 
-   for (int i = 0; i < NUM_TEST_STRINGS; i++ )
+   for (unsigned i = 0; i < test_strings.size(); i++ )
    {
       printf( "\nString %d\n", i );
-      unsigned char* pTestString = auchTestStrings[i];
+      unsigned char* pTestString = (unsigned char*)test_strings[i];
 
       // Base64 decode the input
-      int iMaximumSize = strlen((char*)pTestString) * 3 / 4;
-      Block decoded(iMaximumSize);
-      decoded.len = base64decode(pTestString, strlen((char*)pTestString), decoded.data, iMaximumSize);
+      Block input = base64decode(pTestString, strlen((char*)pTestString));
 
       printf("Plaintext: ");
-      PrintToConsole(decoded.data, decoded.len, true, true);
+      PrintToConsole(input.data, input.len, true, true);
 
       // First, get the ciphertext and IV
-      Block ciphertext;
-      Block IV;
-      serverEncrypt( &decoded, &ciphertext, &IV );
+      Block IV; // output of serverEncrypt
+      Block ciphertext = serverEncrypt( &input, &IV );
 
       // Recover the plaintext only knowing the ciphertext and the IV
-      Block recovered( ciphertext.len );
-      attack( &ciphertext, &IV, &recovered );
+      Block recovered = attack( &ciphertext, &IV);
 
       // Print to console
       printf("Recovered: ");
       PrintToConsole(recovered.data, recovered.len, true, true);
 
       // Does it match?
-      if ( 0 == memcmp( decoded.data, recovered.data, decoded.len ) )
+      if ( 0 == memcmp( input.data, recovered.data, input.len ) )
       {
          printf( "Match!\n" );
       }

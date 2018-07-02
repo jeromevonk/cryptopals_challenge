@@ -12,7 +12,6 @@ unsigned char ucData1[36] = {
 	0x35, 0x33, 0x35, 0x33, 0x35, 0x30, 0x30, 0x39, 0x31, 0x38, 0x31, 0x63
 };
 
-
 unsigned char ucData2[36] = {
 	0x36, 0x38, 0x36, 0x39, 0x37, 0x34, 0x32, 0x30, 0x37, 0x34, 0x36, 0x38,
 	0x36, 0x35, 0x32, 0x30, 0x36, 0x32, 0x37, 0x35, 0x36, 0x63, 0x36, 0x63,
@@ -27,14 +26,8 @@ int main()
    printf("|- - - - - - - - - - - - - - - - -\n");
 
    // First, hex encode the bytes
-   Block data1;
-   data1.alloc(sizeof(ucData1)/2);
-
-   Block data2;
-   data2.alloc(sizeof(ucData2)/2);
-   
-   String_to_Hex(ucData1, sizeof(ucData1), sizeof(ucData1)/2, data1.data);
-   String_to_Hex(ucData2, sizeof(ucData2), sizeof(ucData2)/2, data2.data);
+   Block data1 = String_to_Hex(ucData1, sizeof(ucData1) );
+   Block data2 = String_to_Hex(ucData2, sizeof(ucData2) );
 
    // Perform the XOR operation
    Block result(data1.len);

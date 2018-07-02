@@ -15,9 +15,9 @@ unsigned char auchCiphertext[34] = {
 
 int main()
 {
-   printf(" - - - - - - -\n");
+   printf(" - - - - - - - \n");
    printf("|  XOR Detect |\n");
-   printf(" - - - - - - -\n");
+   printf(" - - - - - - - \n");
 
    int iBestScore = 0;
    int iTempScore = 0;

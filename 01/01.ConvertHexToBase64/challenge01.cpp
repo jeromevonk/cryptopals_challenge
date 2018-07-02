@@ -25,19 +25,14 @@ int main()
    printf("|- - - - - - - - - - - - - - - - \n");
 
    // First, hex encode the bytes
-   Block hex_data;
-   hex_data.alloc(sizeof(ucToEncode)/2);
- 
-   String_to_Hex(ucToEncode, sizeof(ucToEncode), sizeof(ucToEncode)/2, hex_data.data);
+   Block hex_data = String_to_Hex(ucToEncode, sizeof(ucToEncode));
 
    // Base64 encode
-   Block base64;
-   base64.alloc(hex_data.len*4/3);
-   hex_data.len = base64encode(hex_data.data, hex_data.len, base64.data);
+   Block encoded = base64encode(hex_data.data, hex_data.len);
 
    // Print to screen
    printf("Base64 encoded string is:\n");
-   PrintToConsole(base64.data, base64.len);
+   PrintToConsole(encoded.data, encoded.len);
 
    pause();
    

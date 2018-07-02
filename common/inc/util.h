@@ -11,6 +11,10 @@
 
 using namespace std;
 
+// -----------------------------------------------------
+// Definitions
+// -----------------------------------------------------
+#define MAX_LINE_SIZE 1024
 
 // -----------------------------------------------------
 // OS Cross-compile definitions
@@ -29,9 +33,9 @@ void pause()
 class File {
    FILE* m_fp;
 public:
-   File(const char* n, const char* a)
+   File(const char* filename, const char* mode)
    {
-      m_fp = fopen(n, a);
+      m_fp = fopen(filename, mode);
       if (m_fp == 0)
       {
          throw errno;
@@ -99,51 +103,16 @@ struct DictionaryEntry
    }
 };
 
-
 // -----------------------------------------------------------------------
-// Read the whole file
+// Read/ write the whole file
 // -----------------------------------------------------------------------
-int ReadFile(const char* szFile, char* acFileContents, int iMaxSize)
-{
-   std::ifstream is (szFile, std::ifstream::binary);
-   if (!is) 
-   {
-      return -1;
-   }
-
-   // get length of file:
-   is.seekg (0, is.end);
-   int iContentLen = (int)is.tellg();
-   is.seekg (0, is.beg);
-   
-   if ( iContentLen <= 0 )
-   {
-      return 0;
-   }
-   
-   if ( iMaxSize < iContentLen ) 
-   {
-      return -2;
-   }
-
-   char* acTempRead = new char [iContentLen];
-
-   //std::cout << "Reading " << iContentLen << " characters... ";
-   is.read (acTempRead, iContentLen);
-   is.close();
-   
-   memcpy(acFileContents, acTempRead, iContentLen);
-   delete[] acTempRead;
-
-   return iContentLen;
-}
-
-bool BlockReadFile(Block* out, const char* szFile)
+Block ReadFile(const char* szFile)
 {
    std::ifstream is(szFile, std::ifstream::binary);
    if (!is)
    {
-      return false;
+      // return empty Block
+      return Block();
    }
 
    // get length of file:
@@ -153,13 +122,30 @@ bool BlockReadFile(Block* out, const char* szFile)
 
    if (iContentLen <= 0)
    {
+      // return empty Block
+      return Block();
+   }
+
+   // Create a Block object to be returned.
+   Block out(iContentLen);
+
+   is.read((char*)out.data, iContentLen);
+   is.close();
+
+   return out;
+}
+
+bool WriteFile(const char* szFile, Block* contents)
+{
+   std::ofstream os(szFile, std::ifstream::binary);
+   if (!os)
+   {
       return false;
    }
 
-   out->alloc(iContentLen);
-
-   is.read((char*)out->data, iContentLen);
-   is.close();
+   // Write contents
+   os.write((char*)contents->data, contents->len);
+   os.close();
 
    return true;
 }
@@ -168,43 +154,14 @@ bool BlockReadFile(Block* out, const char* szFile)
 // -----------------------------------------------------------------------
 // Get the next line of the file
 // -----------------------------------------------------------------------
-int GetLine(unsigned char* acNextLine, int iMaximumSize, FILE* fp )
+Block GetNextLine( FILE* fp)
 {
-   char achTemp[1024];
-   if ( NULL == fgets (achTemp, 1024, fp) )
-   {
-      return 0;
-   }
-
-   int iToCopy = strlen(achTemp);  // this already excludes the terminating null-character
-
-   // Remove linebreaks
-   while (achTemp[iToCopy -1] == 0x0D || achTemp[iToCopy -1] == 0x0A)
-   {
-      iToCopy--;
-   }
-
-   // Copy to the caller
-   if (iToCopy > iMaximumSize)
-   {
-      iToCopy = iMaximumSize;
-   }
-
-   memcpy(acNextLine, achTemp, iToCopy);
-
-   return iToCopy;
-}
-
-// -----------------------------------------------------------------------
-// Get the next line of the file
-// -----------------------------------------------------------------------
-int BlockGetLine( FILE* fp, Block* out )
-{
-   char achTemp[1024];
+   char achTemp[MAX_LINE_SIZE];
    
-   if (NULL == fgets(achTemp, 1024, fp))
+   if (NULL == fgets(achTemp, MAX_LINE_SIZE, fp))
    {
-      return 0;
+      // return empty Block
+      return Block();
    }
 
    int iToCopy = strlen(achTemp);  // this already excludes the terminating null-character
@@ -215,39 +172,34 @@ int BlockGetLine( FILE* fp, Block* out )
       iToCopy--;
    }
 
-   // Copy to the caller
-   out->alloc(iToCopy);
+   // Create a Block object to be returned.
+   Block out(iToCopy);
+   memcpy(out.data, achTemp, iToCopy);
 
-   memcpy(out->data, achTemp, iToCopy);
-
-   return iToCopy;
+   return out;
 }
 
 // -----------------------------------------------------------------------
 // Convert a ASCII encoded string to hex
 // -----------------------------------------------------------------------
-int String_to_Hex( unsigned char* aucInputAscii, int iInputLen, int iOutputMax, unsigned char* ucOutput )
+Block String_to_Hex( unsigned char* aucInputAscii, int iInputLen )
 {
-   // The size
-   int iOutLength = iInputLen/2; // ignore CR and LF
-   if( iOutLength > iOutputMax )
-   {
-      iOutLength = iOutputMax;
-   }
+   // Create a Block object to be returned.
+   Block out(iInputLen/2);
 
-   for( int i = 0; i < iOutLength; i++ )
+   for( int i = 0; i < iInputLen/2; i++ )
    {
       if( aucInputAscii[2*i] >= '0' && aucInputAscii[2*i] <= '9' )
       {
-         ucOutput[i] = 16*(aucInputAscii[2*i] - '0');
+         out.data[i] = 16*(aucInputAscii[2*i] - '0');
       }
       else if( aucInputAscii[2*i] >= 'A' && aucInputAscii[2*i] <= 'F' )
       {
-         ucOutput[i] = 16*(10 + (aucInputAscii[2*i] - 'A'));
+         out.data[i] = 16*(10 + (aucInputAscii[2*i] - 'A'));
       }
       else if( aucInputAscii[2*i] >= 'a' && aucInputAscii[2*i] <= 'f' )
       {
-         ucOutput[i] = 16*(10 + (aucInputAscii[2*i] - 'a'));
+         out.data[i] = 16*(10 + (aucInputAscii[2*i] - 'a'));
       }
       else
       {
@@ -256,15 +208,15 @@ int String_to_Hex( unsigned char* aucInputAscii, int iInputLen, int iOutputMax, 
 
       if( aucInputAscii[2*i + 1] >= '0' && aucInputAscii[2*i + 1] <= '9' )
       {
-         ucOutput[i] += (aucInputAscii[2*i + 1] - '0');
+         out.data[i] += (aucInputAscii[2*i + 1] - '0');
       }
       else if( aucInputAscii[2*i + 1] >= 'A' && aucInputAscii[2*i + 1] <= 'F' )
       {
-         ucOutput[i] += 10 + (aucInputAscii[2*i + 1] - 'A');
+         out.data[i] += 10 + (aucInputAscii[2*i + 1] - 'A');
       }
       else if( aucInputAscii[2*i + 1] >= 'a' && aucInputAscii[2*i + 1] <= 'f' )
       {
-         ucOutput[i] += 10 + (aucInputAscii[2*i + 1] - 'a');
+         out.data[i] += 10 + (aucInputAscii[2*i + 1] - 'a');
       }
       else
       {
@@ -272,13 +224,13 @@ int String_to_Hex( unsigned char* aucInputAscii, int iInputLen, int iOutputMax, 
       }
    }
 
-   return iOutLength;
+   return out;
 }
 
 // -----------------------------------------------------------------------
 // Print to console
 // -----------------------------------------------------------------------
-void PrintToConsole(unsigned char* aucToPrint, int iLength, bool bChar = true, bool bLinefeedEvery16 = false)
+void PrintToConsole(unsigned char* aucToPrint, int iLength, bool bChar = true, bool bLinefeedEvery16 = false, bool bExtraLineFeed = false)
 {
    if ( bChar )
    {
@@ -301,6 +253,11 @@ void PrintToConsole(unsigned char* aucToPrint, int iLength, bool bChar = true, b
    }
 
    printf("\n");
+
+   if ( bExtraLineFeed )
+   {
+      printf("\n");
+   }
 }
 
 
@@ -315,22 +272,17 @@ void ToUpper(char* acString)
    }*/
 }
 
-
-
 // -----------------------------------------------------------------------
 // Remove characters from string
 // adapted from: https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
 // -----------------------------------------------------------------------
 void removeCharsFromString(string &str, const string &chars)
 {
-   
-
    for (unsigned int i = 0; i < chars.length(); i++)
    {
       str.erase( std::remove(str.begin(), str.end(), chars.at(i) ), str.end());
    }
 }
-
 
 // -----------------------------------------------------------------------
 // Split string into tokens
