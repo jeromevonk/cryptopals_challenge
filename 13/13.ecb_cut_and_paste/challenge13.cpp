@@ -129,9 +129,9 @@ void decryptUserProfile(Block* ciphertext)
 void createAdminProfile(const char* pchEmail)
 {
    // -----------------------------------------------------------------------------------------------------------------
-   // Craft an invalid email string that will leave 'admin' + padding in a block alone
+   // Craft a bogus email string that will leave 'admin' + padding in a block alone
    // plaintext will be as follows: email=_________&uid=100&role=user
-   // so we need to 10 characters of garbage to leave the 'email=' in the first block
+   // so we need 10 characters of garbage to leave the 'email=' in the first block
    // then we can write 'admin' and pad to a full-block, and we don't care about the rest
    // like "##########admin\0xb\0xb\0xb\0xb\0xb\0xb\0xb\0xb\0xb\0xb\0xb";
    // -----------------------------------------------------------------------------------------------------------------
@@ -140,7 +140,7 @@ void createAdminProfile(const char* pchEmail)
 
    Block crafted = encryptUserProfile(achAdmin);
 
-   // We are intereted on the second block only
+   // We are interested on the second block only
    unsigned char auchCrafted[AES_BLOCK_SIZE] = { 0 };
    memcpy(auchCrafted, &crafted.data[AES_BLOCK_SIZE], AES_BLOCK_SIZE);
 

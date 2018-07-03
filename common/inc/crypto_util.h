@@ -517,7 +517,7 @@ void AES_ECB_Encrypt(unsigned char* auchPlaintext, unsigned int uiPlaintextLen, 
    catch(std::bad_alloc& e)
    {
       *puiCiphertextLen = 0;
-      memset( auchCiphertext, 0, sizeof( auchCiphertext ) );
+      memset( auchCiphertext, 0, uiWorkingSize );
       printf("Allocation failed: %s\n", e.what() );
    }
 
@@ -602,7 +602,7 @@ void AES_CBC_Encrypt(unsigned char* auchPlaintext, unsigned int uiPlaintextLen, 
    catch(std::bad_alloc& e)
    {
       *puiCiphertextLen = 0;
-      memset( auchCiphertext, 0, sizeof( auchCiphertext ) );
+      memset( auchCiphertext, 0, uiWorkingSize );
       printf("Allocation failed: %s\n", e.what() );
    }
 }

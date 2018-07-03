@@ -1,7 +1,6 @@
 #include <fstream>      // std::ifstream
 #include "crypto_util.h"
 #include <cstdlib>
-//#include <string.h>
 #include <vector>
 #include <algorithm>
 #include <sstream>

@@ -20,7 +20,7 @@ int main()
    // ----------------------------------------------------------
    {
       // Base4 decode the given ciphertext
-      char* achChallenge = "L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==";
+      const char* achChallenge = "L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==";
       Block ciphertext = base64decode( (unsigned char*)achChallenge, strlen(achChallenge) );
       
       // The key is "YELLOW SUBMARINE"

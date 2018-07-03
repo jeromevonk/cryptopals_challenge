@@ -77,7 +77,7 @@ Block attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition)
    // A pointer to the previous block (or IV, in case the first block is being attacked)
    unsigned char* chPreviousBlock = (uiAttackPosition == 0) ? &IV->data[0] : &ciphertext->data[uiAttackPosition-AES_BLOCK_SIZE];
 
-   for (char chByteAttacked = 15; chByteAttacked >= 0; chByteAttacked--)
+   for (int iByteAttacked = 15; iByteAttacked >= 0; iByteAttacked--)
    {
       //--------------------------------------------------
       // Uncover one byte at a time
@@ -85,21 +85,21 @@ Block attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition)
       for ( unsigned char ch = 0; ch <= 255; ch++ )
       {
          // Padding byte
-         unsigned char chPadding = 16 - chByteAttacked;
+         unsigned char chPadding = 16 - iByteAttacked;
 
-         // Bytes from [0 to chByteAttacked] are not considered
+         // Bytes from [0 to iByteAttacked] are not considered
          // This is not needed, but setting bytes to zero helps debugging
          crafted.set_to_zeroes();
 
-         // We will try values from [0 to 255] for chByteAttacked position
-         crafted.data[chByteAttacked] = ch;
+         // We will try values from [0 to 255] for iByteAttacked position
+         crafted.data[iByteAttacked] = ch;
 
-         // From [chByteAttacked to 15] we need to fill in what we already know
+         // From [iByteAttacked to 15] we need to fill in what we already know
          // to craft a block that will generate the desired padding
          // (We already have I2 stored).
          //  C1' =  I2 ^ P2'
 
-         for ( int i = chByteAttacked + 1; i < 16; i++ )
+         for ( int i = iByteAttacked + 1; i < 16; i++ )
          {
             crafted.data[i] = intermediate.data[i] ^ chPadding;
          }
@@ -119,10 +119,10 @@ Block attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition)
             //
             // We only need to check this if the byte being attacked is the last one of the block
             // -------------------------------------------------------------------------------------------
-            if ( 15 == chByteAttacked )
+            if ( 15 == iByteAttacked )
             {
                // Change only next-to-last byte (14)
-               crafted.data[chByteAttacked-1 ] = 0xAA;
+               crafted.data[iByteAttacked-1 ] = 0xAA;
 
                if ( false == serverCheckPadding( &crafted, IV ) )
                {
@@ -140,14 +140,14 @@ Block attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition)
             unsigned char I2 = ch ^ chPadding;
 
             // C1 is the byte of the valid previous block
-            unsigned char C1 = chPreviousBlock[chByteAttacked];
+            unsigned char C1 = chPreviousBlock[iByteAttacked];
 
             // Find the plaintext byte: P2 = C1 ^ I2
             unsigned char P2 = C1 ^ I2;
 
             // Store information
-            intermediate.data[chByteAttacked] = I2;
-            revealed.data[chByteAttacked]     = P2;
+            intermediate.data[iByteAttacked] = I2;
+            revealed.data[iByteAttacked]     = P2;
 
             break;
          }
@@ -155,7 +155,7 @@ Block attackBlock(Block* ciphertext, Block* IV, unsigned int uiAttackPosition)
          // Did we reach a dead-end?
          if ( ch == 255 )
          {
-            printf( "Could not find a valid padding for byte at position %d\n", uiAttackPosition + chByteAttacked );
+            printf( "Could not find a valid padding for byte at position %d\n", uiAttackPosition + iByteAttacked );
             break;
          }
       }
@@ -191,7 +191,7 @@ int main()
    printf("|    The CBC padding oracle     |\n");
    printf("|- - - - - - - - - - - - - - - - \n");
 
-   std::vector<char*> test_strings = 
+   std::vector<const char*> test_strings = 
    {
       "MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=",
       "MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic=",
