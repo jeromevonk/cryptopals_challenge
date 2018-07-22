@@ -18,7 +18,7 @@ Build it with Visual Studio 2015 or newer.
 
 ##### install latest openssl headers
 
-##### `sudo apt-get install libssl-dev`
+`sudo apt-get install libssl-dev`
 
 ##### build
 
