@@ -6,6 +6,7 @@ LDFLAGS = -lcrypto
 BUILD_DIR    = bin/lnx/
 INC_DIR      = ../common/inc
 OPENSSL_DIR  =/usr/include/openssl
+#OPENSSL_DIR  =../common/inc/win/openssl
 
 
 .PHONY: all clean install
@@ -16,7 +17,7 @@ set_1: challenge01 challenge02 challenge03 challenge04 challenge05 challenge06 c
 
 set_2: challenge09 challenge10 challenge11 challenge12 challenge13 challenge14 challenge15 challenge16
 
-set_3: challenge17 challenge18
+set_3: challenge17 challenge18 challenge19 challenge20
 
 challenge01: $(shell find ../01/ -name '*.cpp')
 	$(CC) $(shell find ../01/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge01 
@@ -65,12 +66,18 @@ challenge15: $(shell find ../15/ -name '*.cpp')
 
 challenge16: $(shell find ../16/ -name '*.cpp')
 	$(CC) $(shell find ../16/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge16
-    
+
 challenge17: $(shell find ../17/ -name '*.cpp')
 	$(CC) $(shell find ../17/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge17
 
 challenge18: $(shell find ../18/ -name '*.cpp')
 	$(CC) $(shell find ../18/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge18
+
+challenge19: $(shell find ../19/ -name '*.cpp')
+	$(CC) $(shell find ../19/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge19
+
+challenge20: $(shell find ../20/ -name '*.cpp')
+	$(CC) $(shell find ../20/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge20
 
 clean: 
 	rm -f $(BUILD_DIR)*

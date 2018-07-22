@@ -1,6 +1,8 @@
 #pragma once
 #include <string.h>
+#include <ctype.h>
 #include <vector>
+#include <cstdint>
 
 // Includes for openssl
 #include <openssl/hmac.h>

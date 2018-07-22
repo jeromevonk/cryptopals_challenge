@@ -88,8 +88,6 @@ int main()
    // The value with the best score if the probable byte of the keystream
    // ---------------------------------------------------------------------
 
-
-
    // Guess every byte of the keystream
    for ( size_t i = 0; i < iMaxSize; i++ )
    {

@@ -9,9 +9,6 @@
 // Globals for this challenge
 unsigned char auchServerKey[16] = { 0xAF, 0x89, 0x83, 0x29, 0x08, 0xD7, 0xF8, 0x97, 0x24, 0x89, 0xF7, 0x28, 0x9F, 0x78, 0x9E, 0x15 };
 
-// https://fattybeagle.com/2017/01/03/cryptopals-challenge-19/
-// https://github.com/SomMeri/matasano-cryptopals-solutions/blob/master/src/main/java/org/meri/matasano/Set3.java
-
 BlockVector getPlaintexts( )
 {
    // Create an empty vector
@@ -97,8 +94,6 @@ int main()
    // - Repeat for all ciphertext, trying to unravel the greatest part of
    //   the key (some positions won't contain spaces)
    // --------------------------------------------------------------------------
-
-   unsigned char* aux = new unsigned char[VCiphertexts.size()];
 
    // Get each ciphertext
    for (unsigned i = 0; i < VCiphertexts.size(); i++ )
