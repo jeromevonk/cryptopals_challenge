@@ -1,12 +1,15 @@
-#include <fstream>      // std::ifstream
 #include "crypto_util.h"
+
+#include <fstream>      // std::ifstream
 #include <cstdlib>
-#include <vector>
 #include <algorithm>
 #include <sstream>
 #include <iterator>
 #include <iostream>
 #include <new>          // std::bad_alloc
+#include <functional> 
+#include <cctype>
+#include <locale>
 
 using namespace std;
 
@@ -102,8 +105,34 @@ struct DictionaryEntry
    }
 };
 
+// --------------------------------------------------------------------------------------
+// String trimming
+// from: https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+// --------------------------------------------------------------------------------------
+
+
+// Trim from beggining of string
+static inline std::string &ltrim(std::string &s) 
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+    return s;
+}
+
+// Trim from end of string
+static inline std::string &rtrim(std::string &s) 
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+    return s;
+}
+
+// Trim from beggining and end of string
+static inline std::string &trim(std::string &s) 
+{
+    return ltrim(rtrim(s));
+}
+
 // -----------------------------------------------------------------------
-// Read/ write the whole file
+// Read / write the whole file
 // -----------------------------------------------------------------------
 Block ReadFile(const char* szFile)
 {
@@ -149,11 +178,44 @@ bool WriteFile(const char* szFile, Block* contents)
    return true;
 }
 
+BlockVector GetLinesFromFile( const char* szFile )
+{
+   // Good reference: [https://gehrcke.de/2011/06/reading-files-in-c-using-ifstream-dealing-correctly-with-badbit-failbit-eofbit-and-perror/]
 
+   // Create an empty vector
+   BlockVector out;
+
+   // Create an ifstream
+   std::ifstream is(szFile, std::ifstream::binary);
+   if (!is)
+   { 
+      return out;
+   }
+
+   // Add every line to the vector
+   std::string line;
+
+   while ( std::getline(is, line) ) 
+   {
+      // Trim
+      line = trim( line );
+
+      // Create a block
+      Block temp( line.size() );
+      temp.set_data( line.c_str(), line.size() );
+
+      // Insert into vector
+      out.push_back(temp);
+   }
+
+   is.close();
+
+   return out;
+}
 // -----------------------------------------------------------------------
 // Get the next line of the file
 // -----------------------------------------------------------------------
-Block GetNextLine( FILE* fp)
+/*Block GetNextLine( FILE* fp)
 {
    char achTemp[MAX_LINE_SIZE];
    
@@ -176,7 +238,7 @@ Block GetNextLine( FILE* fp)
    memcpy(out.data, achTemp, iToCopy);
 
    return out;
-}
+}*/
 
 // -----------------------------------------------------------------------
 // Convert a ASCII encoded string to hex
@@ -310,4 +372,6 @@ std::vector<std::string> splitString(const std::string &original, char chDelimit
 
    return subStrings;
 }
+
+
 

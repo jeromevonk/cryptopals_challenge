@@ -37,7 +37,6 @@ int guess_KeySize(unsigned char* auchCryptogram, int iLen)
    return iProbableKeySize;
 }
 
-
 unsigned char discover_key_byte(unsigned char* auchCryptogram, int iCryptogramLen, int iByteToDiscover, int iKeylen)
 {
    // ----------------------------------------------------------------------------------------------------------

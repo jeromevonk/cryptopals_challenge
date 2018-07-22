@@ -12,72 +12,63 @@ int main()
    printf("|- - - - - - -\n");
    printf("|  XOR Detect |\n");
    printf("|- - - - - - -\n");
-   
 
-   /*FILE* fp = fopen("04.txt", "rb");
-   if (NULL == fp)
+   // Read all lines from file
+   BlockVector lines = GetLinesFromFile( "04.txt" );
+   if ( lines.size() == 0 )
    {
-      printf("The file does not exist or could not be opened");
-      return -1;
-   }*/
+      printf("The file does not exist or could not be opened.");
+   }
 
-   try
-   {
-      File myFile( "04.txt", "rb" );
-
-      int iBestScore = 0;
-      int iTempScore = 0;
-      int iLine = 0;
+   int iBestScore = 0;
+   int iTempScore = 0;
+   int iLine = 0;
    
-      Block tempPlaintext;
-      Block bestPlaintext;
+   Block tempPlaintext;
+   Block bestPlaintext;
 
-      char chBestChar;
-      int  iBestLine;
+   char chBestChar;
+   int  iBestLine;
 
-      // Read line by line
-      for ( Block line_ASC = GetNextLine( myFile ); line_ASC.len != 0; line_ASC = GetNextLine( myFile ) )
+   // Read line by line
+   for (Block const& line_ASC : lines)
+   {
+      // Keep track of the line number
+      iLine++;
+
+      // Convert string to hex
+      Block line_hex = String_to_Hex(line_ASC.data, line_ASC.len);
+      if (line_hex.len < 0)
       {
-         // Keep track of the line number
-         iLine++;
-
-         // Convert string to hex
-         Block line_hex = String_to_Hex(line_ASC.data, line_ASC.len);
-         if (line_hex.len < 0)
-         {
-            printf("Some error ocurred while converting string to hex\n");
-            //return false;
-         }
-
-         // Let's XOR the string against 0xFF characters
-         for (int i = 0; i < 256; i++)
-         {
-            tempPlaintext = line_hex;
-            XOR_string(tempPlaintext.data, tempPlaintext.len, (unsigned char)i);
-
-            // Give it a score
-            iTempScore = scoreBlock(tempPlaintext.data, tempPlaintext.len);
-
-            if (iTempScore > iBestScore)
-            {
-               iBestScore = iTempScore;
-               chBestChar = i;
-               iBestLine  = iLine;
-            
-               // Copy the best plaintext
-               bestPlaintext = tempPlaintext;
-            }
-         }
+         printf("Some error ocurred while converting string to hex\n");
+         //return false;
       }
 
-      printf("Line %d has been encrypted with single-character XOR against char 0x%02X ('%c')\n", iBestLine, chBestChar, chBestChar);
-      printf("Decrypted line is: ");
-      PrintToConsole(bestPlaintext.data, bestPlaintext.len);
+      // Let's XOR the string against 0xFF characters
+      for (int i = 0; i < 256; i++)
+      {
+         tempPlaintext = line_hex;
+         XOR_string(tempPlaintext.data, tempPlaintext.len, (unsigned char)i);
+
+         // Give it a score
+         iTempScore = scoreBlock(tempPlaintext.data, tempPlaintext.len);
+
+         if (iTempScore > iBestScore)
+         {
+            iBestScore = iTempScore;
+            chBestChar = i;
+            iBestLine  = iLine;
+            
+            // Copy the best plaintext
+            bestPlaintext = tempPlaintext;
+         }
+      }
    }
-   catch ( int iErr )
-   {
-      printf("The file does not exist or could not be opened. Errno: %d\n", iErr);
-   }
+
+   printf("Line %d has been encrypted with single-character XOR against char 0x%02X ('%c')\n", iBestLine, chBestChar, chBestChar);
+   printf("Decrypted line is: ");
+   PrintToConsole(bestPlaintext.data, bestPlaintext.len);
+
 
    pause();
    

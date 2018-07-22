@@ -1,6 +1,6 @@
 #pragma once
 #include <string.h>
-
+#include <vector>
 
 // Includes for openssl
 #include <openssl/hmac.h>
@@ -19,7 +19,8 @@ char b64table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                   "abcdefghijklmnopqrstuvwxyz"
                   "0123456789+/=";
 
-const char* english_score_table = "*0987654321/\"'?!_-zqxjkvbwpygumcfl\n,. dhsirnoate";
+const char* english_score_table = "*0987654321/\"';:?!_-zqxjkvbpygfwmucl\n,. drhsnioate";
+const char* english_table_rest  = "0987654321\"';:?!-,. abcdefghijklmnopqrstuvwxyz";
 
 enum OperationMode
 {
@@ -116,6 +117,9 @@ struct Block
    }
 
 };
+
+typedef std::vector<Block> BlockVector;
+
 Block randomBlock(unsigned int uiLen)
 {
    Block out(uiLen);
@@ -263,14 +267,30 @@ Block base64decode(unsigned char* achEncodedBuffer, int iEncodedSize)
 // -----------------------------------------------------------------------------
 // Give a score to a block of plaintext by evaluating english letter frequency
 // -----------------------------------------------------------------------------
-int score_byte(unsigned char c)
+int score_byte(unsigned char c, bool bFirst = false)
 {
    int iByteScore = 0;
 
-   if ( isupper(c) )
+   // ---------------------------------------------------------------------
+   // If it's the first byte of a sentence, we give 
+   // extra point if it's a capital leter
+   // If not, we penalize capital letters
+   // ---------------------------------------------------------------------
+   if ( true == bFirst )
    {
-      c = tolower(c);
-      iByteScore -= 100;
+      if ( isupper(c) )
+      {
+         c = tolower(c);
+         iByteScore += 100;
+      }
+   }
+   else
+   {
+      if ( isupper(c) )
+      {
+         c = tolower(c);
+         iByteScore -= 100;
+      }
    }
 
    const char *where = strchr(english_score_table, c);
@@ -300,6 +320,46 @@ int scoreBlock(unsigned char* auchBlock, int iBlockLen)
 
    return iBlockScore > 0 ? iBlockScore : 0;
 }
+
+// -----------------------------------------------------------------------------
+// 
+// -----------------------------------------------------------------------------
+/*unsigned char englishXORspace[73] = 
+{
+	0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C,
+	0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58,
+	0x59, 0x5A, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A,
+	0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76,
+	0x77, 0x78, 0x79, 0x7A, 0x02, 0x07, 0x1B, 0x1A, 0x1F, 0x01, 0x0C, 0x0E,
+	0x00, 0x0D, 0x7F, 0x19, 0x18, 0x17, 0x16, 0x15, 0x14, 0x13, 0x12, 0x11,
+	0x10
+};*/
+
+bool XORedAgainsSpace(unsigned char c)
+{
+   // XOR against space
+   c ^= 0x20;
+
+   // If it's a leter, convert to lowercase
+   if ( isupper(c) )
+   {
+      c = tolower(c);
+   }
+
+   const char *where = strchr((char*)english_table_rest, c);
+
+   if (where == NULL)
+   {
+      return false;
+   }
+   else
+   {
+      return true;
+   }
+}
+
+
+
 
 // -----------------------------------------------------------------------------
 // Calculate the hamming distance of two buffers

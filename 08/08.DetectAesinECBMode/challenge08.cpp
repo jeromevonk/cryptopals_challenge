@@ -13,37 +13,38 @@ int main()
    printf("|    Detect AES in ECB Mode   |\n");
    printf("|- - - - - - - - - - - - - - -\n");
 
-   try
-   {
-      File myFile( "08.txt", "rb" );
-      int iLine = 0;
    
-      // Read line by line
-      for ( Block line_ASC = GetNextLine( myFile ); line_ASC.len != 0; line_ASC = GetNextLine( myFile ) )
+   // Read all lines from file
+   BlockVector lines = GetLinesFromFile( "08.txt" );
+   if ( lines.size() == 0 )
+   {
+      printf("The file does not exist or could not be opened.");
+   }
+
+   int iLine = 0;
+   
+   // Read line by line
+   for (Block const& line_ASC : lines)
+   {
+      // Keep track of the line number
+      iLine++;
+
+      // Convert string to hex
+      Block line_Hex = String_to_Hex( line_ASC.data, line_ASC.len );
+      if ( line_Hex.len < 0)
       {
-         // Keep track of the line number
-         iLine++;
+         printf("Some error ocurred while converting string to hex\n");
+         //return false;
+      }
 
-         // Convert string to hex
-         Block line_Hex = String_to_Hex( line_ASC.data, line_ASC.len );
-         if ( line_Hex.len < 0)
-         {
-            printf("Some error ocurred while converting string to hex\n");
-            //return false;
-         }
-
-         // Compare the strings
-         int iDetected = detecECBMode(line_Hex.data, line_Hex.len, 16, true);
-         if (ECB_MODE == iDetected)
-         {
-            printf("\nLine %d, detected ECB!\n", iLine);
-         }
+      // Compare the strings
+      int iDetected = detecECBMode(line_Hex.data, line_Hex.len, 16, true);
+      if (ECB_MODE == iDetected)
+      {
+         printf("\nLine %d, detected ECB!\n", iLine);
       }
    }
-   catch ( int iErr )
-   {
-      printf("The file does not exist or could not be opened. Errno: %d\n", iErr);
-   }
+
    
    pause();
   
