@@ -32,7 +32,8 @@ void pause()
 #endif
 }
 
-class File {
+class File 
+{
    FILE* m_fp;
 public:
    File(const char* filename, const char* mode)

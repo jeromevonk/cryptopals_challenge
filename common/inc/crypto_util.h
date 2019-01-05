@@ -362,6 +362,99 @@ bool XORedAgainsSpace(unsigned char c)
 
 
 
+// -----------------------------------------------------------------------------
+// MT 19937 - Mersenne Twister Pseudo Random Number Generator
+// -----------------------------------------------------------------------------
+class MersenneTwister {
+
+public:
+   MersenneTwister( unsigned int uiSeed ) 
+   {
+       uiIndex = N+1;
+       auiMT = new unsigned int[N];
+
+       // Seed
+       seed( uiSeed );
+   }
+
+   ~MersenneTwister()
+   {
+      delete[] auiMT;
+   }
+    
+   unsigned int extract() 
+   {
+      // Extract a tempered value based on MT[index] calling twist() every N numbers
+      if ( uiIndex >= N )
+      {
+         if (uiIndex > N )
+         {
+           //error "Generator was never seeded"
+           // Alternatively, seed with constant value; 5489 is used in reference C code[46]
+         }
+         twist();
+      }
+
+      // Temper the value
+      unsigned int y = auiMT[uiIndex];
+      
+      // Temper the value
+      y ^= ((y >> 11) & 0xFFFFFFFF);
+      y ^= ((y << 7)  & 0x9D2C5680);
+      y ^= ((y << 15) & 0xEFC60000);
+      y ^=  (y >> 18);
+      
+      // Increment uiIndex
+      uiIndex++;
+      
+      return 0xFFFFFFFF & y;
+   }
+
+private:
+   void seed(unsigned int uiSeed) 
+   {
+      // Initialize the generator from a seed
+      uiIndex = N;
+      auiMT[0] = uiSeed;
+      for (unsigned int i = 1; i < N; i++) 
+      {
+         auiMT[i] = 0xFFFFFFFF & ( 0x6c078965 * (auiMT[i-1] ^ (auiMT[i-1] >> 30 )) + i );
+      }
+   }
+    
+   void twist() 
+   {
+
+      for ( unsigned int i = 0; i < N; i++ )
+      {
+         unsigned int x  = (auiMT[i] & UPPER_MASK) + (auiMT[(i + 1) % N] & LOWER_MASK);
+         unsigned int xA = x >> 1;
+
+         // If the lowest bit of x is 1
+         if ( x % 2 != 0 )
+         {
+            xA ^= 0x9908B0DF;
+         }
+
+         auiMT[i] = auiMT[(i + 397) % N] ^ xA;
+      }
+
+      uiIndex = 0;
+   }
+
+   // Create an array with length N to store the state of the generator 
+   unsigned int* auiMT;
+
+   // Index
+   unsigned int uiIndex;
+    
+   // constants
+   const unsigned int N = 624;    // degree of recurrence
+   const unsigned int LOWER_MASK = 0x7FFFFFFF; // ( 1 << 31 ) - 1;
+   const unsigned int UPPER_MASK = 0x80000000; //~LOWER_MASK & 0xFFFFFFFF;
+};
+
+
 
 // -----------------------------------------------------------------------------
 // Calculate the hamming distance of two buffers
