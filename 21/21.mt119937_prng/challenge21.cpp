@@ -22,11 +22,11 @@ int main()
    std::mt19937 generator(10);
 
    printf("Random numbers generated:\n");
-   printf("Mine: %u, std: %u\n", mt.extract(), generator());
-   printf("Mine: %u, std: %u\n", mt.extract(), generator());
-   printf("Mine: %u, std: %u\n", mt.extract(), generator());
-   printf("Mine: %u, std: %u\n", mt.extract(), generator());
-   printf("Mine: %u, std: %u\n", mt.extract(), generator());
+   printf("Mine: %u, std: %lu\n", mt.extract(), generator());
+   printf("Mine: %u, std: %lu\n", mt.extract(), generator());
+   printf("Mine: %u, std: %lu\n", mt.extract(), generator());
+   printf("Mine: %u, std: %lu\n", mt.extract(), generator());
+   printf("Mine: %u, std: %lu\n", mt.extract(), generator());
 
    pause();
 
