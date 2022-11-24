@@ -17,7 +17,7 @@ set_1: challenge01 challenge02 challenge03 challenge04 challenge05 challenge06 c
 
 set_2: challenge09 challenge10 challenge11 challenge12 challenge13 challenge14 challenge15 challenge16
 
-set_3: challenge17 challenge18 challenge19 challenge20
+set_3: challenge17 challenge18 challenge19 challenge20 challenge21
 
 challenge01: $(shell find ../01/ -name '*.cpp')
 	$(CC) $(shell find ../01/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge01 
@@ -78,6 +78,9 @@ challenge19: $(shell find ../19/ -name '*.cpp')
 
 challenge20: $(shell find ../20/ -name '*.cpp')
 	$(CC) $(shell find ../20/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge20
+
+challenge21: $(shell find ../21/ -name '*.cpp')
+	$(CC) $(shell find ../21/ -name '*.cpp') $(CFLAGS) $(LDFLAGS) -I$(INC_DIR) -I$(OPENSSL_DIR) -o $(BUILD_DIR)challenge21
 
 clean: 
 	rm -f $(BUILD_DIR)*
